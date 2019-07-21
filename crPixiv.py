@@ -18,28 +18,51 @@ from queue import Queue
 from threading import Thread
 
 q = Queue()
+driver = None
+isLogin = False
+Page = 2
 
 
 def BS(text, al='html.parser'):
     return BeautifulSoup(str(text), al)
 
 
+# def clickXpath(drixpath):
+
 def getHtml(username, password):
-    driver = getDriver(username, password)
+    xpathForGetMore = '//*[@id="item-container"]/section[2]/section/ul[2]/li/a'
+    xpathForLoadMore = '//*[@id="js-mount-point-discovery"]/div/div[2]/div/div[3]'
+    if not isLogin:
+        driver = getHomwPageDriver(username, password)
+    else:
+        driver.get('https://www.pixiv.net')
     # driver.set_window_size(1920,760)
-    time.sleep(5)
-    html = driver.page_source
-    driver.close()
+    # time.sleep(5)
+    driver.find_element_by_xpath(xpathForGetMore).click()
+    for i in range(Page):
+        driver.find_element_by_xpath(xpathForLoadMore).click()
+    finish = False
+    html = ""
+    time.sleep(1)
+    while not finish:
+        if len(html) < len(driver.page_source):
+            html = driver.page_source
+            time.sleep(1)
+        else:
+            finish = True
+    # driver.close()
     return html
 
 
-def getDriver(username, password):
+def getHomwPageDriver(username, password):
     chromeOption = Options()
     chromeOption.add_argument('--headless')
     chromeOption.add_argument('--disable-gpu')
     chromeOption = None
     driver = webdriver.Chrome(options=chromeOption)
+    driver.implicitly_wait(30)
     # driver.set_window_size(100,100)
+    # driver.find_element_by_xpath().c
     return loginPixiv(driver, username, password)
 
 
@@ -47,26 +70,22 @@ def loginPixiv(driver, username, password):
     fail = 1
     while fail:
         try:
-            driver.get("https://www.pixiv.net/")
-            driver.find_element_by_link_text(u"登录").click()
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::input[1]").click()
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::input[1]").clear()
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::input[1]").send_keys(
-                username)
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::input[2]").clear()
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::input[2]").send_keys(
-                password)
-            driver.find_element_by_xpath(
-                u"(.//*[normalize-space(text()) and normalize-space(.)='忘记了'])[1]/following::button[1]").click()
+            url = "https://www.pixiv.net/"
+            xpathLogin = '//*[@id="wrapper"]/div[3]/div[2]/a[2]'
+            xpathUsername = '//*[@id="LoginComponent"]/form/div[1]/div[1]/input'
+            xpathPasswords = '//*[@id="LoginComponent"]/form/div[1]/div[2]/input'
+            xpathSubmit = '//*[@id="LoginComponent"]/form/button'
+            driver.get(url)
+            driver.find_element_by_xpath(xpathLogin).click()
+            # driver.find_element_by_xpath(xpathUsername).clear()
+            driver.find_element_by_xpath(xpathUsername).send_keys(username)
+            # driver.find_element_by_xpath(xpathPasswords).clear()
+            driver.find_element_by_xpath(xpathPasswords).send_keys(password)
+            driver.find_element_by_xpath(xpathSubmit).click()
             fail = 0
         except NoSuchElementException as e:
             # time.sleep(0.5)
-            # print(e.msg)
+            print(e.msg)
             # driver.close()
             print('失败%d次' % fail)
             fail += 1
@@ -77,7 +96,7 @@ def loginPixiv(driver, username, password):
     return driver
 
 
-def getAllLinkInHtml(html):
+def getAllLinkInHomePageHtml(html):
     soupHtml = BS(html)
     recommendPart = soupHtml.find('ul', {'class': '_image-items gtm-illust-recommend-zone'})
     soupRP = BS(recommendPart, 'html.parser')
@@ -91,6 +110,15 @@ def getAllLinkInHtml(html):
     return masterUrllist
 
 
+def getAllLinkInDiscoveryPageHtml(html):
+    soupHtml = BS(html)
+    divt = str(soupHtml.find('div', {'class': re.compile(r'gtm-illust-recommend-zone _3cRxPb5.*')}))
+    pattern = re.compile(
+        r'https://i.pximg.net/c/\d{1,3}x\d{1,3}/img-master/img/\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}/\d+_p0_master1200.jpg')
+    masterUrllist = pattern.findall(divt)
+    return masterUrllist
+
+
 def isValid(fullPath):
     valid = True
     try:
@@ -100,7 +128,7 @@ def isValid(fullPath):
     return valid
 
 
-def getPixivPic(picurl: str):
+def getPixivPic(picurl: str, secondTime=False):
     refmod = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id='
     id = picurl.split('/')[-1].split('_')[0]
     tips = 'now we are tring to download the picture of id:' + id + '\n'
@@ -112,6 +140,9 @@ def getPixivPic(picurl: str):
     res = rq.get(picurl, headers=headers)
     tips4 = 'response code:' + str(res.status_code)
     print(tips4)
+    if res.status_code != 200 and not secondTime:
+        newPicture = changeSuffix(picurl, 'jpg', 'png')
+        res, name = getPixivPic(newPicture, secondTime=True)
     tips3 = 'finished!'
     print(tips3)
     return (res, name)
@@ -147,6 +178,10 @@ def herestheLink(url, path):
     return fullname
 
 
+def changeSuffix(oldUrl, oldSuffix, newSuffix):
+    return oldUrl.replace(oldSuffix, newSuffix, 1)
+
+
 def confirm(fullpath, oldUrl):
     # 检查格式
     brokenFlag = False
@@ -157,7 +192,7 @@ def confirm(fullpath, oldUrl):
             print(tips1)
             brokenFlag = True
             os.remove(fullpath)
-            newUrl = oldUrl.replace('jpg', 'png', 1)
+            newUrl = changeSuffix(oldUrl, 'jpg', 'png')
             if newUrl[-3:] == 'jpg':
                 tips2 = 'there are more than one jpg string in this url!\n'
                 print(tips2)
@@ -169,7 +204,7 @@ def confirm(fullpath, oldUrl):
 
 def findNext(url, path):
     # 获取编号
-    NOpattern = re.compile(r'p(\d)+.jpg')
+    NOpattern = re.compile(r'p(\d+)+.jpg')
     NO = int(NOpattern.findall(url)[0])
     NO += 1
     nextUrl = NOpattern.sub("p%d.jpg" % NO, url)
@@ -202,7 +237,7 @@ def downloadUrl(url, path):
 
 def useHtmlForDownload(html, path):
     print('have gotten html')
-    masterUrlList = getAllLinkInHtml(html)
+    masterUrlList = getAllLinkInDiscoveryPageHtml(html)
     if masterUrlList == None:
         print("can not analyze html")
         return "unfinish"
@@ -243,8 +278,9 @@ def functionForDownload(path):
             html = q.get().get()
             # print(html)
             os.makedirs(path + '\\', exist_ok=True)
-            p = mp.Process(target=useHtmlForDownload, args=(html, path,))
-            p.start()
+            # p = mp.Process(target=useHtmlForDownload, args=(html, path,))
+            # p.start()
+            useHtmlForDownload(html, path)
             finish = 1
         else:
             if finish:
@@ -301,4 +337,8 @@ def start(username, password, path, processNumber=1):
 
 
 if __name__ == '__main__':
+    username = ""
+    password = ""
+    path = ""
     start(username, password, path)
+    # getHtml(username,password)
