@@ -10,91 +10,90 @@ import time
 from bs4 import BeautifulSoup
 # import datetime
 from PIL import Image
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import NoSuchElementException
+import pixivHtmlGetter
 import multiprocessing as mp
 from queue import Queue
 from threading import Thread
-
+# print(__name__)
 q = Queue()
-driver = None
-isLogin = False
-Page = 2
-
-
+# driver = None
+# isLogin = False
+# Page = 2
+his = []
+#
+#
 def BS(text, al='html.parser'):
     return BeautifulSoup(str(text), al)
 
-
-# def clickXpath(drixpath):
-
-def getHtml(username, password):
-    xpathForGetMore = '//*[@id="item-container"]/section[2]/section/ul[2]/li/a'
-    xpathForLoadMore = '//*[@id="js-mount-point-discovery"]/div/div[2]/div/div[3]'
-    if not isLogin:
-        driver = getHomwPageDriver(username, password)
-    else:
-        driver.get('https://www.pixiv.net')
-    # driver.set_window_size(1920,760)
-    # time.sleep(5)
-    driver.find_element_by_xpath(xpathForGetMore).click()
-    for i in range(Page):
-        driver.find_element_by_xpath(xpathForLoadMore).click()
-    finish = False
-    html = ""
-    time.sleep(1)
-    while not finish:
-        if len(html) < len(driver.page_source):
-            html = driver.page_source
-            time.sleep(1)
-        else:
-            finish = True
-    # driver.close()
-    return html
-
-
-def getHomwPageDriver(username, password):
-    chromeOption = Options()
-    chromeOption.add_argument('--headless')
-    chromeOption.add_argument('--disable-gpu')
-    chromeOption = None
-    driver = webdriver.Chrome(options=chromeOption)
-    driver.implicitly_wait(30)
-    # driver.set_window_size(100,100)
-    # driver.find_element_by_xpath().c
-    return loginPixiv(driver, username, password)
-
-
-def loginPixiv(driver, username, password):
-    fail = 1
-    while fail:
-        try:
-            url = "https://www.pixiv.net/"
-            xpathLogin = '//*[@id="wrapper"]/div[3]/div[2]/a[2]'
-            xpathUsername = '//*[@id="LoginComponent"]/form/div[1]/div[1]/input'
-            xpathPasswords = '//*[@id="LoginComponent"]/form/div[1]/div[2]/input'
-            xpathSubmit = '//*[@id="LoginComponent"]/form/button'
-            driver.get(url)
-            driver.find_element_by_xpath(xpathLogin).click()
-            # driver.find_element_by_xpath(xpathUsername).clear()
-            driver.find_element_by_xpath(xpathUsername).send_keys(username)
-            # driver.find_element_by_xpath(xpathPasswords).clear()
-            driver.find_element_by_xpath(xpathPasswords).send_keys(password)
-            driver.find_element_by_xpath(xpathSubmit).click()
-            fail = 0
-        except NoSuchElementException as e:
-            # time.sleep(0.5)
-            print(e.msg)
-            # driver.close()
-            print('失败%d次' % fail)
-            fail += 1
-            # driver = webdriver.Chrome(options=chromeOption)
-
-    tips = "login success"
-    print(tips)
-    return driver
-
+#
+# # def clickXpath(drixpath):
+#
+# def getHtml(username, password):
+#     xpathForGetMore = '//*[@id="item-container"]/section[2]/section/ul[2]/li/a'
+#     xpathForLoadMore = '//*[@id="js-mount-point-discovery"]/div/div[2]/div/div[3]'
+#     if not isLogin:
+#         driver = getHomwPageDriver(username, password)
+#     else:
+#         driver.get('https://www.pixiv.net')
+#     # driver.set_window_size(1920,760)
+#     # time.sleep(5)
+#     driver.find_element_by_xpath(xpathForGetMore).click()
+#     for i in range(Page):
+#         driver.find_element_by_xpath(xpathForLoadMore).click()
+#     finish = False
+#     html = ""
+#     time.sleep(1)
+#     while not finish:
+#         if len(html) < len(driver.page_source):
+#             html = driver.page_source
+#             time.sleep(1)
+#         else:
+#             finish = True
+#     # driver.close()
+#     return html
+#
+#
+# def getHomwPageDriver(username, password):
+#     chromeOption = Options()
+#     chromeOption.add_argument('--headless')
+#     chromeOption.add_argument('--disable-gpu')
+#     chromeOption = None
+#     driver = webdriver.Chrome(options=chromeOption)
+#     driver.implicitly_wait(30)
+#     # driver.set_window_size(100,100)
+#     # driver.find_element_by_xpath().c
+#     return loginPixiv(driver, username, password)
+#
+#
+# def loginPixiv(driver, username, password):
+#     fail = 1
+#     while fail:
+#         try:
+#             url = "https://www.pixiv.net/"
+#             xpathLogin = '//*[@id="wrapper"]/div[3]/div[2]/a[2]'
+#             xpathUsername = '//*[@id="LoginComponent"]/form/div[1]/div[1]/input'
+#             xpathPasswords = '//*[@id="LoginComponent"]/form/div[1]/div[2]/input'
+#             xpathSubmit = '//*[@id="LoginComponent"]/form/button'
+#             driver.get(url)
+#             driver.find_element_by_xpath(xpathLogin).click()
+#             # driver.find_element_by_xpath(xpathUsername).clear()
+#             driver.find_element_by_xpath(xpathUsername).send_keys(username)
+#             # driver.find_element_by_xpath(xpathPasswords).clear()
+#             driver.find_element_by_xpath(xpathPasswords).send_keys(password)
+#             driver.find_element_by_xpath(xpathSubmit).click()
+#             fail = 0
+#         except NoSuchElementException as e:
+#             # time.sleep(0.5)
+#             print(e.msg)
+#             # driver.close()
+#             print('失败%d次' % fail)
+#             fail += 1
+#             # driver = webdriver.Chrome(options=chromeOption)
+#
+#     tips = "login success"
+#     print(tips)
+#     return driver
+#
 
 def getAllLinkInHomePageHtml(html):
     soupHtml = BS(html)
@@ -242,11 +241,19 @@ def useHtmlForDownload(html, path):
         print("can not analyze html")
         return "unfinish"
     pool = mp.Pool()
+    tips="get url :"+len(masterUrlList)
+    validUrl=0
     for each in masterUrlList:
-        originalUrl = turnMasterIntoOriginal(each)
-        pool.apply_async(downloadUrl, args=(originalUrl, path,))
+        id = each.split('/')[-1].split('_')[0]
+        print(id)
+        if id not in his:
+            his.add(id)
+            originalUrl = turnMasterIntoOriginal(each)
+            pool.apply_async(downloadUrl, args=(originalUrl, path,))
+            validUrl+=1
     pool.close()
     pool.join()
+    print("total download "+str(validUrl))
     return "finish"
 
 
@@ -275,7 +282,7 @@ def functionForDownload(path):
     while 1:
         if not q.empty():
             print("test2")
-            html = q.get().get()
+            html = q.get()
             # print(html)
             os.makedirs(path + '\\', exist_ok=True)
             # p = mp.Process(target=useHtmlForDownload, args=(html, path,))
@@ -290,11 +297,13 @@ def functionForDownload(path):
 def functionForGetHtml(username, password, processnumber=1):
     global q
     # processnumber = 1
-    poolForT1 = mp.Pool(processes=processnumber)
+    # poolForT1 = mp.Pool(processes=processnumber)
     print("now in getHtml")
     for i in range(processnumber):
-        htmlObj = poolForT1.apply_async(getHtml, args=(username, password,))
-        q.put(htmlObj)
+        # htmlObj = poolForT1.apply_async(getHtml, args=(username, password,))
+        phg=pixivHtmlGetter.PixivHtmlGetter(username,password,tipsOption=True)
+        html=phg.getHtml()
+        q.put(html)
 
 
 def functionForExist():
@@ -320,9 +329,10 @@ def functionForExist():
 
 
 def start(username, password, path, processNumber=1):
-    t1Break = False
-    t2Break = False
-
+    # t1Break = False
+    # t2Break = False
+    global his
+    his = getAllDirID(path)
     t1 = Thread(target=functionForGetHtml, args=(username, password, processNumber,))
     t2 = Thread(target=functionForDownload, args=(path,))
     # t3 = Thread(target=functionForExist)
@@ -336,9 +346,18 @@ def start(username, password, path, processNumber=1):
     # t3.join()
 
 
-if __name__ == '__main__':
-    username = ""
-    password = ""
-    path = ""
-    start(username, password, path)
-    # getHtml(username,password)
+def getAllDirID(path):
+    ImageNameList = os.listdir(path)
+    his = []
+    for eachName in ImageNameList:
+        his.append(eachName.split('_')[-2])
+    return set(his)
+
+
+# if __name__ == '__main__':
+#     # username = ""
+#     # password = ""
+#     # path = ""
+#     freeze_support()
+#     start(username, password, path)
+#     # getHtml(username,password)
