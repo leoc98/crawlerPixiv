@@ -26,7 +26,7 @@ then it will download the daily recommendation picture in the homepage into your
   
 ##To use other functions in crPixiv:
   - if you get a link of thumnail whose url includes __'master'__ which has less pixel than an __'original'__ picture, you could use:
-
+  
         originalUrl = crPixiv.turnMasterIntoOriginal(masterUrl)
    
    to get the originalUrl, then try to use:
@@ -50,4 +50,4 @@ then it will download the daily recommendation picture in the homepage into your
   - To get the cookie. If I do so, it could have a much faster speed. However, because I try a whole day and still haven't work it out, I use selenium for instead.
   
 ---
-#use markdown edit this text
+#use markdown edit this text in __2017_7_22__
